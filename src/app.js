@@ -1,13 +1,15 @@
 const express = require('express');
-const methodOverride = require('method-override');
+const paginate = require('express-paginate');
 const app = express();
 
 
 //URL encode  - Para que nos pueda llegar la información desde el formulario al req.body
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-//Aquí estoy disponiendo la posibilidad para utilizar el seteo en los formularios para el usod e los metodos put ó delete
-app.use(methodOverride('_method'));
+app.use(paginate.middleware(8,50));
+
+
 
 //Aquí pueden colocar las rutas de las APIs
 app.use('/api/v1/movies', require('./routes/v1/movies.routes'));
