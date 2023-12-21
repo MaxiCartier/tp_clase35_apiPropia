@@ -266,5 +266,8 @@ const deleteMovie = async(id)=>{
 module.exports = {
     getAllMovies,
     getMovieById,
-    storeMovie
+    storeMovie,
+    seEncuentraLaPelicula,
+    updateMovie,
+    deleteMovie
 }

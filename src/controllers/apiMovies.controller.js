@@ -1,6 +1,6 @@
 const paginate = require('express-paginate');
 const createError = require('http-errors');
-const { getAllMovies, getMovieById, storeMovie } = require("../services/movies.services");
+const { getAllMovies, getMovieById, storeMovie, seEncuentraLaPelicula, updateMovie, deleteMovie  } = require("../services/movies.services");
 
 module.exports = {
 
