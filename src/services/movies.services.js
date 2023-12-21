@@ -1,6 +1,34 @@
+const { Op } = require('sequelize');
 const db = require('../database/models');
 
-const getAllMovies = async (limit, offset) => {
+const seEncuentraLaPelicula = async (title) =>{
+    const movie = await db.Movie.findOne({
+        where: {
+          titulo: title,
+        },
+      })
+        .then((peliculaEncontrada) => {
+          if (peliculaEncontrada) {
+            true
+          } else {
+            false
+          }
+        })
+        .catch((error) => {
+          console.error('Error al buscar la película:', error);
+        });
+
+}
+
+const getAllMovies = async (limit, offset, keyword) => {
+
+    const options = keyword ? {
+        where:{
+           title:{
+               [Op.substring] : keyword
+           }
+        }
+   } : null ;
 
     try {
         const movies = await db.Movie.findAll({
@@ -20,14 +48,21 @@ const getAllMovies = async (limit, offset) => {
                     attributes: []
                 }
             }
-            ]
+            ],
+            ...options
+        });
+        if(!movies){
+            throw {
+                status: 404,
+                message: 'No hay películas'
+            }
+        }
+
+        const count = await db.Movie.count({
+            ...options
         });
 
-        const count = await db.Movie.count();
-        return {
-            movies,
-            count
-        }
+        return {movies, count}
     } catch (error) {
         console.log(error);
         throw {
@@ -115,7 +150,118 @@ const storeMovie = async (dataMovie, actors) => {
         }
     }
 }
+const updateMovie = async (id, dataMovie) => {
+    try {
+        const {title,awards,rating,length,release_date,genre_id,actors} = dataMovie
 
+        const movie = await db.Movie.findByPk(id,{
+            attributes: {
+                exclude: ['created_at','updated_at','genre_id']
+            },include: [{
+                association: 'genre',
+                attributes:['id','name']
+                },
+                {
+                    association:'actors',
+                    attributes:['id','first_name','last_name'],
+                    through:{
+                        attributes: []
+                    }    
+                }
+            ] 
+        });
+
+        if(!movie){
+            throw{
+                status: 404,
+                message: 'No hay películas con ese ID'
+            }
+        }
+
+        movie.title = title?.trim() || movie.title;
+        movie.awards = awards ||movie.awards;
+        movie.rating = rating ||movie.rating;
+        movie.length = length || movie.length;
+        movie.release_date = release_date || movie.release_date;
+        movie.genre_id = genre_id || movie.genre_id;
+
+        await movie.save();
+
+        if(actors?.length){
+            await db.Actor_Movie.destroy({
+                where:{
+                    movie_id : id
+                }
+            })
+            const actorsArray = actors.map(actor =>{
+                return {
+                    movie_id: id,
+                    actor_id: actor
+                }
+            } )
+            await db.Actor_Movie.bulkCreate(actorsArray,{validate:true});
+        }
+        await movie.reload();
+
+        return movie;
+
+
+    } catch (error) {
+        console.log(error);
+        throw{
+            status: error.status || 500,
+            message : error.message || 'Error en el servicio'
+        }
+    }
+}
+const deleteMovie = async(id)=>{
+
+    try {
+        if(isNaN(id)){
+            throw{
+                status:404,
+                message: "ID invalida"
+            }
+        }
+
+        const movie = await db.Movie.findByPk(id);
+
+        if(!movie){
+            throw{
+                status:404,
+                message: "No hay una película con ese ID"
+            }
+        }
+        await db.Actor_Movie.destroy({
+            where: {
+                movie_id: id
+            }
+        })
+
+        await db.Actor.update(
+            {
+                favorite_movie_id : null
+            },
+            {   
+                where:{
+                    favorite_movie_id: id
+                }
+            },
+        )
+
+        await movie.destroy()
+
+        return null;
+
+
+    } catch (error) {
+        console.log(error);
+        throw{
+            status: error.status || 500,
+            message : error.message || 'Error en el servicio'
+        }
+    }
+}
 
 module.exports = {
     getAllMovies,

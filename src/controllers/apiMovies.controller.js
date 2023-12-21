@@ -1,5 +1,5 @@
 const paginate = require('express-paginate');
-const createError =require('http-errors');
+const createError = require('http-errors');
 const { getAllMovies, getMovieById, storeMovie } = require("../services/movies.services");
 
 module.exports = {
@@ -61,6 +61,10 @@ module.exports = {
       throw createError(400, 'Todos los campos son obligatorios')
       }
 
+      if(await seEncuentraLaPelicula(title)){
+        throw createError(400,'Ya se encuentra la pelicula')
+    }
+
     const movie = await storeMovie(req.body, actors);
     return res.status(200).json({
       ok: true,
@@ -79,11 +83,44 @@ module.exports = {
       })
     }
   },
-  update: (req, res) => {
+  update: async (req,res) =>{
+        
+    try {
 
-  },
-  delete: (req, res) => {
+        const movieUpdated = await updateMovie(req.params.id, req.body);
 
+        return res.status(200).json({
+            ok:true,
+            message: 'Película actualizada con exito',
+            data:movieUpdated
+        })
+
+    } catch (error) {
+        return res.status(error.status || 500).json({
+            ok:false,
+            status: error.status || 500,
+            error: error.message || 'Error, lo siento!'
+        })
+    }
+
+},
+delete: async (req,res)=>{
+  try {
+      
+      await deleteMovie(req.params.id);
+      
+      return res.status(200).json({
+          ok:true,
+          message: 'Película eliminada',
+      })
+      
+  } catch (error) {
+      return res.status(error.status || 500).json({
+          ok:false,
+          status: error.status || 500,
+          error: error.message || 'Error, lo siento!'
+      })
   }
+}
 
 }
